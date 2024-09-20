@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-	void* cRalloc(size_t memsize);
+	void* _allocate(size_t memsize);
 
-	void cfree(void* ptr);
+	void _free(void* ptr);
 
 	size_t getAllocatedBytes();
 

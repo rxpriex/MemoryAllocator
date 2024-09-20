@@ -1,24 +1,48 @@
-#include <windows.h>
 #include <stddef.h>
 
 #include "Memory.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__linux__)
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
 #define MEMORY_BLOCK_SIZE 2
 #define MAX_FREED_BYTES 128
+
+void* _systemcall_allocate_memory(size_t size) {
+#ifdef _WIN32
+	return VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+#elif defined(__linux__)
+	return mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+#else
+	printf("Failed: Unsupported OS");
+	exit(1);
+#endif
+}
+
+void _systemcall_free_memory(void* memory) {
+#ifdef _WIN32
+	VirtualFree(memory, 0, MEM_RELEASE);
+#elif defined(__linux__)
+	munmap(memory, size);
+#else
+	printf("Failed: Unsupported OS");
+	exit(1);
+#endif
+}
 
 typedef struct MemoryBlock {
 	size_t size;
 	struct MemoryBlock* next;
 } MemoryBlock;
 
-static MemoryBlock* hfree;
-static MemoryBlock* hheap;
+MemoryBlock* hfree;
+MemoryBlock* hheap;
 
-static void freeMemory(void* ptr) {
-	VirtualFree(ptr, 0, MEM_RELEASE);
-}
-
-static size_t countBytes(MemoryBlock* b) {
+size_t countBytes(MemoryBlock* b) {
 	size_t total_size = 0;
 	MemoryBlock* curr = b;
 	while (curr != NULL) {
@@ -32,7 +56,7 @@ size_t getAllocatedBytes() { return countBytes(hheap); }
 
 size_t getFreedBytes() { return countBytes(hfree); }
 
-static void removeFromHeap(MemoryBlock* block) {
+void removeFromHeap(MemoryBlock* block) {
 	MemoryBlock* curr = hheap;
 	MemoryBlock* prev = NULL;
 	while (curr != NULL) {
@@ -50,12 +74,12 @@ static void removeFromHeap(MemoryBlock* block) {
 	}
 }
 
-void cfree(void* ptr) {
+void _free(void* ptr) {
 	if (ptr == NULL) return;
 	MemoryBlock* block = (MemoryBlock*)ptr - 1;
 	removeFromHeap(block);
 	if ((countBytes(hfree) + block->size) > MAX_FREED_BYTES) {
-		freeMemory(ptr);
+		_systemcall_free_memory(ptr);
 		return;
 	}
 	block->next = hfree;
@@ -63,7 +87,7 @@ void cfree(void* ptr) {
 	memset((char*)(block + 1), 0, block->size);
 }
 
-static void processOversizedMemoryBlock(size_t size, MemoryBlock* memory) {
+void processOversizedMemoryBlock(size_t size, MemoryBlock* memory) {
 	if (size < memory->size) {
 		size_t remainingSize = memory->size - size;
 		MemoryBlock* newBlock = (MemoryBlock*)((char*)(memory + 1) + size);
@@ -71,11 +95,11 @@ static void processOversizedMemoryBlock(size_t size, MemoryBlock* memory) {
 		newBlock->next = NULL;
 		memory->size = size;
 		memset((char*)(newBlock + 1), 0, remainingSize);
-		cfree((void*)(newBlock + 1));
+		_free((void*)(newBlock + 1));
 	}
 }
 
-void* cRalloc(size_t memsize) {
+void* _allocate(size_t memsize) {
 	if (memsize <= 0) return NULL;
 
 	memsize = (memsize + MEMORY_BLOCK_SIZE - 1) & ~(MEMORY_BLOCK_SIZE - 1);
@@ -102,7 +126,7 @@ void* cRalloc(size_t memsize) {
 		curr = curr->next;
 	}
 
-	void* ptr = VirtualAlloc(NULL, memsize, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
+	void* ptr = _systemcall_allocate_memory(memsize);
 	if (ptr == NULL) return NULL;
 	MemoryBlock* allocatedMemory = (MemoryBlock*)ptr;
 	allocatedMemory->size = memsize;
