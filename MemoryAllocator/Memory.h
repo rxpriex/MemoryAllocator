@@ -20,6 +20,8 @@ extern "C" {
 
 	extern size_t getFreedBytes();
 
+	extern void deallocToSize(int value);
+
 	extern void SVIP(__int64** ptr, __int32 value);
 
 	#define _HeapSize(value) SVIP(&addrHeapSize,value)

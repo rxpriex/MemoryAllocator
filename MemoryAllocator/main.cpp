@@ -6,12 +6,13 @@
 
 int main() {
 	while (true) {
-		_MemorySize(32);
-		_BufferSize(128);
+		for (int i = 0; i < 40; i++) {
+			std::string* str = alloc(std::string);
+		}
 
-		std::string* i = alloc(std::string);
-
-		_free(i);
+		std::cout << getAllocatedBytes() << std::endl;
+		deallocToSize(40);
+		std::cout << getAllocatedBytes() << std::endl;
 	}
 
 	return 0;

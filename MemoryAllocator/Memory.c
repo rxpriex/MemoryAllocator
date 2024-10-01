@@ -67,6 +67,14 @@ size_t getAllocatedBytes() { return countBytes(hheap); }
 
 size_t getFreedBytes() { return countBytes(hfree); }
 
+void deallocToSize(int value){
+	MemoryBlock* curr = hheap;
+	while (countBytes(hheap) > value) {
+		hheap = hheap->next;
+		_systemcall_free_memory(curr);
+	}
+}
+
 void SVIP(__int64** ptr, __int32 value) {
 	__int32* temp;
 	if (*ptr == 0) {
