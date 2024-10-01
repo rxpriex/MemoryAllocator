@@ -1,6 +1,8 @@
 #ifndef _MEMORY_H
 #define _MEMORY_H
 
+#define alloc(value) (value*)_allocate(sizeof(value))
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -103,6 +103,8 @@ void _free(void* ptr) {
 	if (ptr == NULL) return;
 	MemoryBlock* block = (MemoryBlock*)ptr - 1;
 	removeFromHeap(block);
+	int i = (countBytes(hfree) + block->size);
+	int y = getValue(addrBufferSize, DEFAULT_BUFFER_SIZE);
 	if ((countBytes(hfree) + block->size) > getValue(addrBufferSize,DEFAULT_BUFFER_SIZE)) {
 		_systemcall_free_memory(ptr);
 		return;
@@ -124,12 +126,15 @@ void processOversizedMemoryBlock(size_t size, MemoryBlock* memory) {
 	}
 }
 
+size_t adjustMemorySize(size_t value, __int32 target) {
+	return target * (value % target > 0 ? (value / target) + 1 : (value / target));
+}
+
 void* _allocate(size_t memsize) {
 	if (memsize <= 0) return NULL;
 	if((getAllocatedBytes() + memsize - getFreedBytes()) > getValue(addrHeapSize, DEFAULT_HEAP_SIZE)) return NULL;
 
-	printf("Memory block size:%d\n", getValue(addrMemoryBlockSize, 0));
-	memsize = (memsize + getValue(addrMemoryBlockSize,DEFAULT_MEMORY_SIZE) - 1) & ~(getValue(addrMemoryBlockSize, DEFAULT_MEMORY_SIZE) - 1);
+	memsize = adjustMemorySize(memsize, getValue(addrMemoryBlockSize, DEFAULT_MEMORY_SIZE));
 
 	MemoryBlock* prev = NULL;
 	MemoryBlock* curr = hfree;

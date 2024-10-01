@@ -5,14 +5,14 @@
 #include <iostream>
 
 int main() {
+	while (true) {
+		_MemorySize(32);
+		_BufferSize(128);
 
-	_MemorySize(36);
-	_BufferSize(128);
+		std::string* i = alloc(std::string);
 
-	int* i = new int();
-	*i = 12;
-
-	std::cout << i << "/" << *i << "/" << getAllocatedBytes() << std::endl;
+		_free(i);
+	}
 
 	return 0;
 }
