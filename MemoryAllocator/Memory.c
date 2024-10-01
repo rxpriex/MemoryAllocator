@@ -1,5 +1,7 @@
 #include <stddef.h>
 
+#include <stdio.h>
+
 #include "Memory.h"
 
 #ifdef _WIN32
@@ -9,8 +11,13 @@
 #include <unistd.h>
 #endif
 
-#define MEMORY_BLOCK_SIZE 2
-#define MAX_FREED_BYTES 128
+#define DEFAULT_MEMORY_SIZE 8
+#define DEFAULT_HEAP_SIZE INFINITE
+#define DEFAULT_BUFFER_SIZE 128
+
+__int32 getValue(__int64* addr, int defVal) {
+	return addr == 0 ? defVal : *((__int32*)(*(__int64*)addr));
+}
 
 void* _systemcall_allocate_memory(size_t size) {
 #ifdef _WIN32
@@ -23,11 +30,15 @@ void* _systemcall_allocate_memory(size_t size) {
 #endif
 }
 
+__int64* addrBufferSize = 0;
+__int64* addrMemoryBlockSize = 0;
+__int64* addrHeapSize = 0;
+
 void _systemcall_free_memory(void* memory) {
 #ifdef _WIN32
 	VirtualFree(memory, 0, MEM_RELEASE);
 #elif defined(__linux__)
-	munmap(memory, size);
+	munmap(memory, sizeof(memory));
 #else
 	printf("Failed: Unsupported OS");
 	exit(1);
@@ -56,6 +67,20 @@ size_t getAllocatedBytes() { return countBytes(hheap); }
 
 size_t getFreedBytes() { return countBytes(hfree); }
 
+void SVIP(__int64** ptr, __int32 value) {
+	__int32* temp;
+	if (*ptr == 0) {
+		 temp = (__int32*)_systemcall_allocate_memory(sizeof(__int32));
+		*temp = value;
+		*ptr = _systemcall_allocate_memory(sizeof(__int64));
+		**ptr = ((__int64*)(temp));
+	}
+	else {
+		temp = (__int32*)(**ptr);
+		*temp = value;
+	}
+}
+
 void removeFromHeap(MemoryBlock* block) {
 	MemoryBlock* curr = hheap;
 	MemoryBlock* prev = NULL;
@@ -78,7 +103,7 @@ void _free(void* ptr) {
 	if (ptr == NULL) return;
 	MemoryBlock* block = (MemoryBlock*)ptr - 1;
 	removeFromHeap(block);
-	if ((countBytes(hfree) + block->size) > MAX_FREED_BYTES) {
+	if ((countBytes(hfree) + block->size) > getValue(addrBufferSize,DEFAULT_BUFFER_SIZE)) {
 		_systemcall_free_memory(ptr);
 		return;
 	}
@@ -101,8 +126,10 @@ void processOversizedMemoryBlock(size_t size, MemoryBlock* memory) {
 
 void* _allocate(size_t memsize) {
 	if (memsize <= 0) return NULL;
+	if((getAllocatedBytes() + memsize - getFreedBytes()) > getValue(addrHeapSize, DEFAULT_HEAP_SIZE)) return NULL;
 
-	memsize = (memsize + MEMORY_BLOCK_SIZE - 1) & ~(MEMORY_BLOCK_SIZE - 1);
+	printf("Memory block size:%d\n", getValue(addrMemoryBlockSize, 0));
+	memsize = (memsize + getValue(addrMemoryBlockSize,DEFAULT_MEMORY_SIZE) - 1) & ~(getValue(addrMemoryBlockSize, DEFAULT_MEMORY_SIZE) - 1);
 
 	MemoryBlock* prev = NULL;
 	MemoryBlock* curr = hfree;

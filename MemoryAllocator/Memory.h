@@ -4,16 +4,39 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+	extern __int64* addrHeapSize;
 
-	void* _allocate(size_t memsize);
+	extern __int64* addrBufferSize;
 
-	void _free(void* ptr);
+	extern __int64* addrMemoryBlockSize;
 
-	size_t getAllocatedBytes();
+	extern void* _allocate(size_t memsize);
 
-	size_t getFreedBytes();
+	extern void _free(void* ptr);
+
+	extern size_t getAllocatedBytes();
+
+	extern size_t getFreedBytes();
+
+	extern void SVIP(__int64** ptr, __int32 value);
+
+	#define _HeapSize(value) SVIP(&addrHeapSize,value)
+	#define _MemorySize(value) SVIP(&addrMemoryBlockSize,value)
+	#define _BufferSize(value) SVIP(&addrBufferSize,value)
 
 #ifdef __cplusplus
 }
+
+#ifdef C_MEMORY_MANAGEMENT
+
+void* operator new(size_t size) {
+	return _allocate(size);
+}
+
+void operator delete(void* ptr) {
+	_free(ptr);
+}
+
+#endif
 #endif
 #endif _MEMORY_H
