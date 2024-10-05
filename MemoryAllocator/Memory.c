@@ -30,10 +30,6 @@ void* _systemcall_allocate_memory(size_t size) {
 #endif
 }
 
-__int64* addrBufferSize = 0;
-__int64* addrMemoryBlockSize = 0;
-__int64* addrHeapSize = 0;
-
 void _systemcall_free_memory(void* memory) {
 #ifdef _WIN32
 	VirtualFree(memory, 0, MEM_RELEASE);
@@ -44,6 +40,10 @@ void _systemcall_free_memory(void* memory) {
 	exit(1);
 #endif
 }
+
+__int64* addrBufferSize = 0;
+__int64* addrMemoryBlockSize = 0;
+__int64* addrHeapSize = 0;
 
 typedef struct MemoryBlock {
 	size_t size;
@@ -67,9 +67,24 @@ size_t getAllocatedBytes() { return countBytes(hheap); }
 
 size_t getFreedBytes() { return countBytes(hfree); }
 
-void deallocToSize(int value){
+int _validateCMP(void* ptr)
+{
+	if (ptr == NULL) return 0;
+	MemoryBlock* target = (MemoryBlock*)ptr - 1;
 	MemoryBlock* curr = hheap;
+	while (curr != NULL) {
+		if (curr == target) {
+			return 1;
+		}
+		curr = curr->next;
+	}
+	return 0;
+}
+
+void deallocToSize(int value){
+	MemoryBlock* curr;
 	while (countBytes(hheap) > value) {
+		curr = hheap;
 		hheap = hheap->next;
 		_systemcall_free_memory(curr);
 	}

@@ -2,27 +2,32 @@
 #define _MEMORY_H
 
 #define alloc(value) (value*)_allocate(sizeof(value))
+#define isAllocated(value) _validateCMP(value)
+#define dealloc(value) _free(value)
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-	extern __int64* addrHeapSize;
-
-	extern __int64* addrBufferSize;
-
-	extern __int64* addrMemoryBlockSize;
 
 	extern void* _allocate(size_t memsize);
 
 	extern void _free(void* ptr);
 
+	extern int _validateCMP(void* ptr);
+
+	extern void deallocToSize(int value);
+
 	extern size_t getAllocatedBytes();
 
 	extern size_t getFreedBytes();
 
-	extern void deallocToSize(int value);
-
 	extern void SVIP(__int64** ptr, __int32 value);
+
+	extern __int64* addrHeapSize;
+
+	extern __int64* addrBufferSize;
+
+	extern __int64* addrMemoryBlockSize;
 
 	#define _HeapSize(value) SVIP(&addrHeapSize,value)
 	#define _MemorySize(value) SVIP(&addrMemoryBlockSize,value)
